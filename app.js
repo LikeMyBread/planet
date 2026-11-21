@@ -187,15 +187,9 @@
     state.selection.x = Math.floor(state.sourceCanvas.width / 2);
     state.selection.y = Math.floor(state.sourceCanvas.height / 2);
 
-    // Dynamic max for selection width slider
+    // Dynamic max for selection width slider only
     const maxDimension = Math.min(state.sourceCanvas.width, state.sourceCanvas.height);
-    elements.selectionWidthSlider.max = maxDimension;
-    elements.selectionWidthInput.max = maxDimension;
-
-    // If selection width is greater than image, clamp it
-    if (state.selection.width > maxDimension) {
-      setSelectionWidth(Math.floor(maxDimension * 0.5));
-    }
+    elements.selectionWidthSlider.max = Math.max(1024, maxDimension);
 
     elements.emptyState.style.display = 'none';
     elements.imageDimensionsInfo.textContent = `${state.sourceCanvas.width} × ${state.sourceCanvas.height} px`;
@@ -228,11 +222,17 @@
   // Selection Control (Core Control #1: Selection Width)
   // ==========================================================================
 
-  function setSelectionWidth(newWidth) {
-    const width = Math.max(8, Math.min(newWidth, Math.min(state.sourceCanvas.width, state.sourceCanvas.height)));
+  function setSelectionWidth(newWidth, updateInput = true) {
+    const width = Math.max(1, Math.round(newWidth));
     state.selection.width = width;
-    elements.selectionWidthInput.value = width;
-    elements.selectionWidthSlider.value = width;
+    if (updateInput) {
+      elements.selectionWidthInput.value = width;
+    }
+
+    // Slider snaps to its min/max bounds without restricting typed values
+    const sliderMin = parseInt(elements.selectionWidthSlider.min, 10) || 16;
+    const sliderMax = parseInt(elements.selectionWidthSlider.max, 10) || 1024;
+    elements.selectionWidthSlider.value = Math.max(sliderMin, Math.min(width, sliderMax));
 
     drawOverlay();
     updatePlanetPreview();
@@ -345,11 +345,18 @@
   // Output Width Control (Core Control #2)
   // ==========================================================================
 
-  function setOutputWidth(newWidth) {
-    const w = Math.max(16, Math.min(newWidth, 512));
+  function setOutputWidth(newWidth, updateInput = true) {
+    const w = Math.max(1, Math.round(newWidth));
     state.outputWidth = w;
-    elements.outputWidthInput.value = w;
-    elements.outputWidthSlider.value = w;
+    if (updateInput) {
+      elements.outputWidthInput.value = w;
+    }
+
+    // Slider snaps to its min/max bounds without restricting typed values
+    const sliderMin = parseInt(elements.outputWidthSlider.min, 10) || 16;
+    const sliderMax = parseInt(elements.outputWidthSlider.max, 10) || 256;
+    elements.outputWidthSlider.value = Math.max(sliderMin, Math.min(w, sliderMax));
+
     elements.previewBadge.textContent = `${w} × ${w} px`;
 
     // Highlight preset button if matches
@@ -371,6 +378,16 @@
     const displaySize = state.outputWidth * state.previewZoom;
     state.previewCanvas.style.width = `${displaySize}px`;
     state.previewCanvas.style.height = `${displaySize}px`;
+
+    // If displaySize exceeds preview backdrop container (256px), fit inside neatly
+    if (displaySize > 256) {
+      state.previewCanvas.style.maxWidth = '100%';
+      state.previewCanvas.style.maxHeight = '100%';
+      state.previewCanvas.style.objectFit = 'contain';
+    } else {
+      state.previewCanvas.style.maxWidth = 'none';
+      state.previewCanvas.style.maxHeight = 'none';
+    }
   }
 
   // ==========================================================================
@@ -715,22 +732,44 @@
   function initControls() {
     // Selection Width (Input & Slider)
     elements.selectionWidthInput.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      if (!isNaN(val)) setSelectionWidth(val);
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        setSelectionWidth(val, false);
+      }
+    });
+
+    elements.selectionWidthInput.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        setSelectionWidth(val, true);
+      } else {
+        setSelectionWidth(state.selection.width, true);
+      }
     });
 
     elements.selectionWidthSlider.addEventListener('input', (e) => {
-      setSelectionWidth(parseInt(e.target.value, 10));
+      setSelectionWidth(parseInt(e.target.value, 10), true);
     });
 
     // Output Width (Input & Slider & Presets)
     elements.outputWidthInput.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      if (!isNaN(val)) setOutputWidth(val);
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        setOutputWidth(val, false);
+      }
+    });
+
+    elements.outputWidthInput.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        setOutputWidth(val, true);
+      } else {
+        setOutputWidth(state.outputWidth, true);
+      }
     });
 
     elements.outputWidthSlider.addEventListener('input', (e) => {
-      setOutputWidth(parseInt(e.target.value, 10));
+      setOutputWidth(parseInt(e.target.value, 10), true);
     });
 
     document.querySelectorAll('[data-output-size]').forEach(btn => {
