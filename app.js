@@ -89,17 +89,6 @@
       darkness: 0.70,
       softness: 0.30
     },
-    atmosphere: {
-      enabled: true,
-      color: '#64b5f6',
-      glowIntensity: 0.45
-    },
-    rings: {
-      enabled: false,
-      color: '#e0c088',
-      angleDeg: -25,
-      width: 0.60
-    },
     palette: 'original',
     dither: 'none',
     outline: {
@@ -152,19 +141,6 @@
     shadowDarknessVal: document.getElementById('shadowDarknessVal'),
     shadowSoftnessSlider: document.getElementById('shadowSoftnessSlider'),
     shadowSoftnessVal: document.getElementById('shadowSoftnessVal'),
-
-    atmosphereToggle: document.getElementById('atmosphereToggle'),
-    atmosphereColorInput: document.getElementById('atmosphereColorInput'),
-    atmosphereGlowSlider: document.getElementById('atmosphereGlowSlider'),
-    atmosphereGlowVal: document.getElementById('atmosphereGlowVal'),
-
-    ringsToggle: document.getElementById('ringsToggle'),
-    ringsControls: document.getElementById('ringsControls'),
-    ringsColorInput: document.getElementById('ringsColorInput'),
-    ringAngleSlider: document.getElementById('ringAngleSlider'),
-    ringAngleVal: document.getElementById('ringAngleVal'),
-    ringWidthSlider: document.getElementById('ringWidthSlider'),
-    ringWidthVal: document.getElementById('ringWidthVal'),
 
     paletteSelect: document.getElementById('paletteSelect'),
     ditherSelect: document.getElementById('ditherSelect'),
@@ -482,18 +458,6 @@
     const shadowDarkness = state.lighting.darkness;
     const shadowSoftness = Math.max(0.01, state.lighting.softness);
 
-    const useAtmosphere = state.atmosphere.enabled;
-    const atmoColor = hexToRgb(state.atmosphere.color);
-    const atmoIntensity = state.atmosphere.glowIntensity;
-
-    const useRings = state.rings.enabled;
-    const ringColor = hexToRgb(state.rings.color);
-    const ringAngleRad = (state.rings.angleDeg * Math.PI) / 180;
-    const cosR = Math.cos(-ringAngleRad);
-    const sinR = Math.sin(-ringAngleRad);
-    const ringInnerR = outRadius * 1.15;
-    const ringOuterR = outRadius * (1.15 + state.rings.width * 0.85);
-
     const useOutline = state.outline.enabled;
     const outlineColor = hexToRgb(state.outline.color);
 
@@ -534,74 +498,12 @@
       }
     }
 
-    // Planetary Ring check helper
-    function checkRing(ox, oy) {
-      if (!useRings) return { inRing: false, isFront: false, opacity: 0 };
-      const rx = ox - outCenterX;
-      const ry = oy - outCenterY;
-
-      // Rotate coordinates along ring tilt angle
-      const rotX = rx * cosR - ry * sinR;
-      const rotY = rx * sinR + ry * cosR;
-
-      // Flat elliptical ring
-      const ellipseRadius = Math.sqrt(rotX * rotX + (rotY * 3.2) * (rotY * 3.2));
-
-      if (ellipseRadius >= ringInnerR && ellipseRadius <= ringOuterR) {
-        // Front vs back of planet based on rotated Y
-        const isFront = rotY > 0;
-        // Ring banding pattern
-        const ringT = (ellipseRadius - ringInnerR) / (ringOuterR - ringInnerR);
-        const bandAlpha = 0.65 + 0.35 * Math.sin(ringT * 18);
-        return { inRing: true, isFront, opacity: bandAlpha };
-      }
-      return { inRing: false, isFront: false, opacity: 0 };
-    }
-
-    // Main pixel rendering loop
-    for (let py = 0; py < outH; py++) {
-      for (let px = 0; px < outW; px++) {
-        const outIdx = (py * outW + px) * 4;
-
-        // Normalized coordinate relative to planet center: -1.0 to 1.0
-        const u = (px + 0.5 - outCenterX) / outRadius;
-        const v = (py + 0.5 - outCenterY) / outRadius;
-        const distSq = u * u + v * v;
-        const dist = Math.sqrt(distSq);
-
-        // Check planetary rings
-        const ringInfo = checkRing(px + 0.5, py + 0.5);
-
-        // If outside the planet circle
+        // If outside the planet circle -> transparent
         if (dist > 1.0) {
-          if (ringInfo.inRing) {
-            // Render ring pixel
-            let r = ringColor[0];
-            let g = ringColor[1];
-            let b = ringColor[2];
-
-            // Shading on ring from planet shadow
-            if (!ringInfo.isFront && dist < 1.4 && Math.abs(u) < 0.6) {
-              r *= 0.3;
-              g *= 0.3;
-              b *= 0.3;
-            }
-
-            if (paletteName !== 'original') {
-              [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, 0);
-            }
-
-            outPixels[outIdx] = r;
-            outPixels[outIdx + 1] = g;
-            outPixels[outIdx + 2] = b;
-            outPixels[outIdx + 3] = Math.round(ringInfo.opacity * 255);
-          } else {
-            // Transparent outside
-            outPixels[outIdx] = 0;
-            outPixels[outIdx + 1] = 0;
-            outPixels[outIdx + 2] = 0;
-            outPixels[outIdx + 3] = 0;
-          }
+          outPixels[outIdx] = 0;
+          outPixels[outIdx + 1] = 0;
+          outPixels[outIdx + 2] = 0;
+          outPixels[outIdx + 3] = 0;
           continue;
         }
 
@@ -674,23 +576,7 @@
           b *= finalLight;
         }
 
-        // 4. Apply Atmosphere Glow (Limb / Fresnel rim)
-        if (useAtmosphere) {
-          const rim = Math.pow(dist, 3.5) * atmoIntensity;
-          r = r * (1.0 - rim) + atmoColor[0] * rim;
-          g = g * (1.0 - rim) + atmoColor[1] * rim;
-          b = b * (1.0 - rim) + atmoColor[2] * rim;
-        }
-
-        // 5. Planetary Rings in front of planet
-        if (ringInfo.inRing && ringInfo.isFront) {
-          const ringAlpha = ringInfo.opacity * 0.85;
-          r = r * (1.0 - ringAlpha) + ringColor[0] * ringAlpha;
-          g = g * (1.0 - ringAlpha) + ringColor[1] * ringAlpha;
-          b = b * (1.0 - ringAlpha) + ringColor[2] * ringAlpha;
-        }
-
-        // 6. Dithering offset
+        // 4. Dithering offset
         let ditherVal = 0;
         if (ditherMode === 'bayer4') {
           ditherVal = BAYER_4X4[py % 4][px % 4];
@@ -890,50 +776,6 @@
       updatePlanetPreview();
     });
 
-    // Atmosphere
-    elements.atmosphereToggle.addEventListener('change', (e) => {
-      state.atmosphere.enabled = e.target.checked;
-      updatePlanetPreview();
-    });
-
-    elements.atmosphereColorInput.addEventListener('input', (e) => {
-      state.atmosphere.color = e.target.value;
-      updatePlanetPreview();
-    });
-
-    elements.atmosphereGlowSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      state.atmosphere.glowIntensity = val / 100;
-      elements.atmosphereGlowVal.textContent = `${val}%`;
-      updatePlanetPreview();
-    });
-
-    // Rings
-    elements.ringsToggle.addEventListener('change', (e) => {
-      state.rings.enabled = e.target.checked;
-      elements.ringsControls.style.display = e.target.checked ? 'flex' : 'none';
-      updatePlanetPreview();
-    });
-
-    elements.ringsColorInput.addEventListener('input', (e) => {
-      state.rings.color = e.target.value;
-      updatePlanetPreview();
-    });
-
-    elements.ringAngleSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      state.rings.angleDeg = val;
-      elements.ringAngleVal.textContent = `${val}°`;
-      updatePlanetPreview();
-    });
-
-    elements.ringWidthSlider.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      state.rings.width = val / 100;
-      elements.ringWidthVal.textContent = `${val}%`;
-      updatePlanetPreview();
-    });
-
     // Palette & Dither
     elements.paletteSelect.addEventListener('change', (e) => {
       state.palette = e.target.value;
@@ -1005,18 +847,6 @@
       elements.shadowSoftnessSlider.value = 30;
       state.lighting.softness = 0.30;
       elements.shadowSoftnessVal.textContent = '30%';
-
-      elements.atmosphereToggle.checked = true;
-      state.atmosphere.enabled = true;
-      elements.atmosphereColorInput.value = '#64b5f6';
-      state.atmosphere.color = '#64b5f6';
-      elements.atmosphereGlowSlider.value = 45;
-      state.atmosphere.glowIntensity = 0.45;
-      elements.atmosphereGlowVal.textContent = '45%';
-
-      elements.ringsToggle.checked = false;
-      state.rings.enabled = false;
-      elements.ringsControls.style.display = 'none';
 
       elements.paletteSelect.value = 'original';
       state.palette = 'original';
