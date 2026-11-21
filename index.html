@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Planet Creator</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Bar -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-icon">🪐</span>
+        <div class="brand-titles">
+          <h1 class="brand-title">PIXEL PLANET</h1>
+          <p class="brand-tagline">Transform any image into a retro pixel-art planet</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Preset Demo Textures -->
+        <div class="presets-group">
+          <span class="action-label">Sample Textures:</span>
+          <div class="preset-buttons">
+            <button class="btn btn-preset active" data-preset="jupiter" title="Jupiter-like Gas Giant">Gas Giant</button>
+            <button class="btn btn-preset" data-preset="earth" title="Earth-like Continents & Oceans">Terran</button>
+            <button class="btn btn-preset" data-preset="magma" title="Molten Lava & Basalt">Volcanic</button>
+            <button class="btn btn-preset" data-preset="ice" title="Frozen Ice & Glaciers">Glacial</button>
+            <button class="btn btn-preset" data-preset="nebula" title="Cosmic Purple Nebula">Alien</button>
+          </div>
+        </div>
+
+        <!-- Upload Button -->
+        <label class="btn btn-primary upload-btn" for="imageFileInput">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Upload Image
+          <input type="file" id="imageFileInput" accept="image/*" hidden>
+        </label>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="main-workspace">
+      <!-- Main Area: Occupied by the uploaded image -->
+      <main class="main-image-area" id="dropZone">
+        <div class="canvas-viewport" id="viewport">
+          <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="sourceCanvas"></canvas>
+            <canvas id="overlayCanvas"></canvas>
+          </div>
+
+          <!-- Empty State Drop Prompt (visible if no image is loaded) -->
+          <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-content">
+              <div class="empty-icon">🌠</div>
+              <h2>Drop an image here</h2>
+              <p>Supports PNG, JPG, WEBP, or SVG &bull; Or click Upload above</p>
+              <label class="btn btn-secondary" for="imageFileInput">Browse Files</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Info / Status Bar -->
+        <div class="image-status-bar">
+          <div class="status-item">
+            <span class="status-label">Image:</span>
+            <span class="status-value" id="imageDimensionsInfo">1024 × 768 px</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Center:</span>
+            <span class="status-value" id="selectionCenterInfo">X: 512, Y: 384</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Instruction:</span>
+            <span class="status-hint">Click or drag anywhere on the image to place the selector</span>
+          </div>
+          <div class="zoom-controls">
+            <button class="btn btn-icon" id="zoomOutBtn" title="Zoom Out">&minus;</button>
+            <span class="zoom-level" id="zoomLevelInfo">100%</span>
+            <button class="btn btn-icon" id="zoomInBtn" title="Zoom In">&plus;</button>
+            <button class="btn btn-icon" id="zoomFitBtn" title="Fit to Screen">Fit</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Sidebar: Preview Box on top, Controls below -->
+      <aside class="sidebar-panel">
+        <!-- Preview Box (Upper Right) -->
+        <section class="preview-box-container">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="dot-indicator"></span> Planet Preview
+            </h2>
+            <div class="preview-resolution-badge" id="previewBadge">64 × 64 px</div>
+          </div>
+
+          <div class="preview-display-wrapper">
+            <div class="preview-canvas-backdrop bg-space" id="previewBackdrop">
+              <canvas id="previewCanvas" width="64" height="64"></canvas>
+            </div>
+
+            <div class="preview-toolbar">
+              <div class="scale-selectors">
+                <span class="tool-label">View:</span>
+                <button class="btn btn-chip" data-preview-zoom="1">1×</button>
+                <button class="btn btn-chip" data-preview-zoom="2">2×</button>
+                <button class="btn btn-chip active" data-preview-zoom="4">4×</button>
+                <button class="btn btn-chip" data-preview-zoom="6">6×</button>
+              </div>
+
+              <div class="bg-selectors">
+                <button class="btn btn-icon-chip active" data-bg="space" title="Space Background">🌌</button>
+                <button class="btn btn-icon-chip" data-bg="check" title="Transparent Checkerboard">🏁</button>
+                <button class="btn btn-icon-chip" data-bg="black" title="Pure Black">⬛</button>
+                <button class="btn btn-icon-chip" data-bg="white" title="Pure White">⬜</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-action-buttons">
+            <button class="btn btn-success" id="downloadBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export PNG
+            </button>
+            <button class="btn btn-secondary" id="copyBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy
+            </button>
+          </div>
+        </section>
+
+        <!-- Controls Area (Below Preview Box) -->
+        <section class="controls-container">
+          <div class="section-header">
+            <h2 class="section-title">Transformations</h2>
+            <button class="btn-link" id="resetControlsBtn" title="Reset all controls to default">Reset</button>
+          </div>
+
+          <div class="controls-scrollable">
+            <!-- First Core Control: Selection Width -->
+            <div class="control-card primary-card">
+              <div class="control-header">
+                <label for="selectionWidthInput" class="control-label">
+                  <span class="control-num">1</span> Selection Width
+                </label>
+                <div class="control-value-group">
+                  <input type="number" id="selectionWidthInput" class="number-input" min="16" max="2048" value="256" step="1">
+                  <span class="unit">px</span>
+                </div>
+              </div>
+              <input type="range" id="selectionWidthSlider" class="range-slider" min="16" max="1024" value="256" step="1">
+              <div class="control-description">
+                Diameter of circular selector on the uploaded image. Click anywhere on the image to position.
+              </div>
+            </div>
+
+            <!-- Second Core Control: Output Width -->
+            <div class="control-card primary-card">
+              <div class="control-header">
+                <label for="outputWidthInput" class="control-label">
+                  <span class="control-num">2</span> Output Width
+                </label>
+                <div class="control-value-group">
+                  <input type="number" id="outputWidthInput" class="number-input" min="16" max="512" value="64" step="1">
+                  <span class="unit">px</span>
+                </div>
+              </div>
+              <input type="range" id="outputWidthSlider" class="range-slider" min="16" max="256" value="64" step="1">
+              <div class="quick-presets">
+                <span class="quick-presets-label">Presets:</span>
+                <button class="btn btn-pill" data-output-size="24">24</button>
+                <button class="btn btn-pill" data-output-size="32">32</button>
+                <button class="btn btn-pill active" data-output-size="64">64</button>
+                <button class="btn btn-pill" data-output-size="96">96</button>
+                <button class="btn btn-pill" data-output-size="128">128</button>
+              </div>
+              <div class="control-description">
+                Final pixel art width. If different from Selection Width, pixels are resized using the scaling algorithm below.
+              </div>
+            </div>
+
+            <!-- Transformation Controls -->
+            <div class="control-accordion">
+              <!-- Scaling Algorithm -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <span class="accordion-title">Scaling Algorithm</span>
+                </div>
+                <div class="accordion-body">
+                  <div class="toggle-switch-group">
+                    <label class="radio-chip">
+                      <input type="radio" name="scalingAlgo" value="nearest" checked>
+                      <span>Nearest Neighbor (Pixel Crisp)</span>
+                    </label>
+                    <label class="radio-chip">
+                      <input type="radio" name="scalingAlgo" value="bilinear">
+                      <span>Bilinear (Smooth Downsample)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3D Spherical Warp -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <div class="accordion-title-with-toggle">
+                    <input type="checkbox" id="sphereWarpToggle" checked>
+                    <label for="sphereWarpToggle" class="accordion-title">3D Spherical Warp</label>
+                  </div>
+                  <span class="badge-mini">Bulge</span>
+                </div>
+                <div class="accordion-body" id="sphereWarpControls">
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Sphere Curvature:</span>
+                      <span id="sphereCurvatureVal">100%</span>
+                    </div>
+                    <input type="range" id="sphereCurvatureSlider" min="0" max="100" value="100">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Planetary Lighting & Shading -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <div class="accordion-title-with-toggle">
+                    <input type="checkbox" id="lightingToggle" checked>
+                    <label for="lightingToggle" class="accordion-title">Sunlight & Shadow</label>
+                  </div>
+                  <span class="badge-mini">Terminator</span>
+                </div>
+                <div class="accordion-body" id="lightingControls">
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Light Angle:</span>
+                      <span id="lightAngleVal">315°</span>
+                    </div>
+                    <input type="range" id="lightAngleSlider" min="0" max="360" value="315">
+                  </div>
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Shadow Darkness:</span>
+                      <span id="shadowDarknessVal">70%</span>
+                    </div>
+                    <input type="range" id="shadowDarknessSlider" min="0" max="100" value="70">
+                  </div>
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Shadow Softness:</span>
+                      <span id="shadowSoftnessVal">30%</span>
+                    </div>
+                    <input type="range" id="shadowSoftnessSlider" min="0" max="100" value="30">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Atmosphere & Rim Glow -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <div class="accordion-title-with-toggle">
+                    <input type="checkbox" id="atmosphereToggle" checked>
+                    <label for="atmosphereToggle" class="accordion-title">Atmosphere Glow</label>
+                  </div>
+                  <span class="badge-mini">Rim</span>
+                </div>
+                <div class="accordion-body" id="atmosphereControls">
+                  <div class="control-row-inline">
+                    <label>Atmosphere Color:</label>
+                    <input type="color" id="atmosphereColorInput" value="#64b5f6" class="color-picker">
+                  </div>
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Glow Intensity:</span>
+                      <span id="atmosphereGlowVal">45%</span>
+                    </div>
+                    <input type="range" id="atmosphereGlowSlider" min="0" max="100" value="45">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Planetary Rings -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <div class="accordion-title-with-toggle">
+                    <input type="checkbox" id="ringsToggle">
+                    <label for="ringsToggle" class="accordion-title">Planetary Rings</label>
+                  </div>
+                  <span class="badge-mini">Saturn</span>
+                </div>
+                <div class="accordion-body" id="ringsControls" style="display: none;">
+                  <div class="control-row-inline">
+                    <label>Ring Color:</label>
+                    <input type="color" id="ringsColorInput" value="#e0c088" class="color-picker">
+                  </div>
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Ring Tilt Angle:</span>
+                      <span id="ringAngleVal">-25°</span>
+                    </div>
+                    <input type="range" id="ringAngleSlider" min="-60" max="60" value="-25">
+                  </div>
+                  <div class="slider-control">
+                    <div class="slider-label-row">
+                      <span>Ring Width:</span>
+                      <span id="ringWidthVal">60%</span>
+                    </div>
+                    <input type="range" id="ringWidthSlider" min="20" max="100" value="60">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pixel Palette & Dithering -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <span class="accordion-title">Palette & Dither</span>
+                  <span class="badge-mini">Retro</span>
+                </div>
+                <div class="accordion-body">
+                  <div class="select-group">
+                    <label for="paletteSelect">Color Palette:</label>
+                    <select id="paletteSelect" class="form-select">
+                      <option value="original" selected>Full Color (Source)</option>
+                      <option value="pico8">PICO-8 (16 Colors)</option>
+                      <option value="gameboy">Game Boy Classic (4 Greens)</option>
+                      <option value="cyberpunk">Cyberpunk Neon</option>
+                      <option value="solar">Solar Flare (Warm Oranges)</option>
+                      <option value="deepspace">Deep Space Cyan</option>
+                      <option value="mono16">16 Shades of Grey</option>
+                    </select>
+                  </div>
+                  <div class="select-group" style="margin-top: 10px;">
+                    <label for="ditherSelect">Pixel Dithering:</label>
+                    <select id="ditherSelect" class="form-select">
+                      <option value="none" selected>No Dither (Clean Steps)</option>
+                      <option value="bayer2">Bayer 2×2 (Subtle Dither)</option>
+                      <option value="bayer4">Bayer 4×4 (Classic Retro)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pixel Outline -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <div class="accordion-title-with-toggle">
+                    <input type="checkbox" id="outlineToggle" checked>
+                    <label for="outlineToggle" class="accordion-title">Pixel Outline</label>
+                  </div>
+                  <span class="badge-mini">Border</span>
+                </div>
+                <div class="accordion-body" id="outlineControls">
+                  <div class="control-row-inline">
+                    <label>Border Color:</label>
+                    <input type="color" id="outlineColorInput" value="#10131c" class="color-picker">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast" id="toast">Planet copied to clipboard!</div>
+
+  <!-- Scripts -->
+  <script src="sample-textures.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
