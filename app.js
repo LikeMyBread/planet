@@ -498,6 +498,17 @@
       }
     }
 
+    // Main pixel rendering loop
+    for (let py = 0; py < outH; py++) {
+      for (let px = 0; px < outW; px++) {
+        const outIdx = (py * outW + px) * 4;
+
+        // Normalized coordinate relative to planet center: -1.0 to 1.0
+        const u = (px + 0.5 - outCenterX) / outRadius;
+        const v = (py + 0.5 - outCenterY) / outRadius;
+        const distSq = u * u + v * v;
+        const dist = Math.sqrt(distSq);
+
         // If outside the planet circle -> transparent
         if (dist > 1.0) {
           outPixels[outIdx] = 0;

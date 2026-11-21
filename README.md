@@ -32,11 +32,11 @@ A web application that turns uploaded images into retro pixel art planets.
 You can open `index.html` directly in any modern web browser or serve it using any local static server:
 
 ```bash
-# Python 3
-python3 -m http.server 8085
+# Node
+node server.js
 
-# Node / npx
-npx serve .
+# Or Python 3
+python3 -m http.server 8088
 ```
 
-Then visit `http://localhost:8085` in your browser.
+Then visit `http://localhost:8088` in your browser.
