@@ -143,6 +143,10 @@
       darkness: 0.70,
       softness: 0.30
     },
+    flatten: {
+      enabled: false,
+      count: 8
+    },
     palette: 'original',
     dither: 'none',
     outline: {
@@ -195,6 +199,12 @@
     shadowDarknessVal: document.getElementById('shadowDarknessVal'),
     shadowSoftnessSlider: document.getElementById('shadowSoftnessSlider'),
     shadowSoftnessVal: document.getElementById('shadowSoftnessVal'),
+
+    flattenToggle: document.getElementById('flattenToggle'),
+    flattenControls: document.getElementById('flattenControls'),
+    flattenCountInput: document.getElementById('flattenCountInput'),
+    flattenCountSlider: document.getElementById('flattenCountSlider'),
+    flattenSwatches: document.getElementById('flattenSwatches'),
 
     paletteSelect: document.getElementById('paletteSelect'),
     ditherSelect: document.getElementById('ditherSelect'),
@@ -458,11 +468,9 @@
     ];
   }
 
-  function findClosestPaletteColor(r, g, b, paletteName, ditherOffset = 0, colorCache = null) {
-    const palette = PALETTES[paletteName];
-    if (!palette) return [r, g, b];
+  function findClosestColor(r, g, b, colors, ditherOffset = 0, colorCache = null) {
+    if (!colors || colors.length === 0) return [r, g, b];
 
-    // Apply dither offset
     const dr = Math.min(255, Math.max(0, Math.round(r + ditherOffset * 48)));
     const dg = Math.min(255, Math.max(0, Math.round(g + ditherOffset * 48)));
     const db = Math.min(255, Math.max(0, Math.round(b + ditherOffset * 48)));
@@ -473,11 +481,10 @@
     }
 
     let bestDist = Infinity;
-    let bestColor = palette[0];
+    let bestColor = colors[0];
 
-    for (let i = 0; i < palette.length; i++) {
-      const c = palette[i];
-      // Weighted perceptual color distance
+    for (let i = 0; i < colors.length; i++) {
+      const c = colors[i];
       const d = (c[0] - dr) * (c[0] - dr) * 0.299 +
                 (c[1] - dg) * (c[1] - dg) * 0.587 +
                 (c[2] - db) * (c[2] - db) * 0.114;
@@ -490,6 +497,109 @@
       colorCache.set(cacheKey, bestColor);
     }
     return bestColor;
+  }
+
+  function findClosestPaletteColor(r, g, b, paletteName, ditherOffset = 0, colorCache = null) {
+    const palette = PALETTES[paletteName];
+    if (!palette) return [r, g, b];
+    return findClosestColor(r, g, b, palette, ditherOffset, colorCache);
+  }
+
+  // Fast Median Cut color quantization for adaptive palette extraction
+  function extractAdaptivePalette(pixels, maxColors) {
+    if (!pixels || pixels.length === 0) return [[0, 0, 0]];
+    const count = Math.max(1, Math.round(maxColors));
+    if (count === 1) {
+      let r = 0, g = 0, b = 0;
+      for (let i = 0; i < pixels.length; i++) {
+        r += pixels[i][0];
+        g += pixels[i][1];
+        b += pixels[i][2];
+      }
+      const len = pixels.length || 1;
+      return [[Math.round(r / len), Math.round(g / len), Math.round(b / len)]];
+    }
+
+    class VBox {
+      constructor(pts) {
+        this.pts = pts;
+        let minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
+          if (p[0] < minR) minR = p[0]; if (p[0] > maxR) maxR = p[0];
+          if (p[1] < minG) minG = p[1]; if (p[1] > maxG) maxG = p[1];
+          if (p[2] < minB) minB = p[2]; if (p[2] > maxB) maxB = p[2];
+        }
+        this.rangeR = maxR - minR;
+        this.rangeG = maxG - minG;
+        this.rangeB = maxB - minB;
+        this.volume = Math.max(this.rangeR, this.rangeG, this.rangeB);
+      }
+      avg() {
+        let r = 0, g = 0, b = 0;
+        const len = this.pts.length || 1;
+        for (let i = 0; i < this.pts.length; i++) {
+          r += this.pts[i][0];
+          g += this.pts[i][1];
+          b += this.pts[i][2];
+        }
+        return [Math.round(r / len), Math.round(g / len), Math.round(b / len)];
+      }
+    }
+
+    let boxes = [new VBox(pixels)];
+    while (boxes.length < count) {
+      let bestIdx = -1;
+      let maxVol = -1;
+      for (let i = 0; i < boxes.length; i++) {
+        if (boxes[i].pts.length > 1 && boxes[i].volume > maxVol) {
+          maxVol = boxes[i].volume;
+          bestIdx = i;
+        }
+      }
+      if (bestIdx === -1 || maxVol <= 0) break;
+
+      const box = boxes.splice(bestIdx, 1)[0];
+      const pts = box.pts;
+      let axis = 0;
+      if (box.rangeG >= box.rangeR && box.rangeG >= box.rangeB) axis = 1;
+      else if (box.rangeB >= box.rangeR && box.rangeB >= box.rangeG) axis = 2;
+
+      pts.sort((a, b) => a[axis] - b[axis]);
+      const mid = Math.floor(pts.length / 2);
+      boxes.push(new VBox(pts.slice(0, mid)));
+      boxes.push(new VBox(pts.slice(mid)));
+    }
+
+    return boxes.map(b => b.avg());
+  }
+
+  function renderFlattenSwatches(colors) {
+    if (!elements.flattenSwatches) return;
+    elements.flattenSwatches.innerHTML = '';
+    for (let i = 0; i < colors.length; i++) {
+      const c = colors[i];
+      const swatch = document.createElement('div');
+      swatch.className = 'palette-swatch';
+      swatch.style.backgroundColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+      swatch.title = `Color ${i + 1}: rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+      elements.flattenSwatches.appendChild(swatch);
+    }
+  }
+
+  function setFlattenCount(newCount, updateInput = true) {
+    const count = Math.max(1, Math.round(newCount));
+    state.flatten.count = count;
+    if (updateInput) {
+      elements.flattenCountInput.value = count;
+    }
+
+    // Slider snaps to its min/max bounds without restricting typed values
+    const sliderMin = parseInt(elements.flattenCountSlider.min, 10) || 2;
+    const sliderMax = parseInt(elements.flattenCountSlider.max, 10) || 64;
+    elements.flattenCountSlider.value = Math.max(sliderMin, Math.min(count, sliderMax));
+
+    updatePlanetPreview();
   }
 
   // ==========================================================================
@@ -581,6 +691,8 @@
     }
 
     // Main pixel rendering loop
+    const insidePixels = [];
+
     for (let py = 0; py < outH; py++) {
       for (let px = 0; px < outW; px++) {
         const outIdx = (py * outW + px) * 4;
@@ -607,16 +719,16 @@
         const isBorder = useOutline && (dist > 1.0 - pixelRadiusThickness);
 
         if (isBorder) {
-          let r = outlineColor[0];
-          let g = outlineColor[1];
-          let b = outlineColor[2];
-          if (paletteName !== 'original') {
-            [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, 0, colorCache);
-          }
-          outPixels[outIdx] = r;
-          outPixels[outIdx + 1] = g;
-          outPixels[outIdx + 2] = b;
-          outPixels[outIdx + 3] = 255;
+          insidePixels.push({
+            outIdx,
+            px,
+            py,
+            r: outlineColor[0],
+            g: outlineColor[1],
+            b: outlineColor[2],
+            a: 255,
+            isBorder: true
+          });
           continue;
         }
 
@@ -669,28 +781,105 @@
           b *= finalLight;
         }
 
-        // 4. Dithering offset
-        let ditherVal = 0;
-        if (ditherMode === 'bayer4') {
-          ditherVal = BAYER_4X4[py % 4][px % 4];
-        } else if (ditherMode === 'bayer2') {
-          ditherVal = BAYER_2X2[py % 2][px % 2];
-        }
+        insidePixels.push({
+          outIdx,
+          px,
+          py,
+          r: Math.round(r),
+          g: Math.round(g),
+          b: Math.round(b),
+          a,
+          isBorder: false
+        });
+      }
+    }
 
-        // 7. Color Palette Quantization
-        if (paletteName !== 'original') {
-          [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, ditherVal, colorCache);
-        } else if (ditherMode !== 'none') {
-          // Subtle dithering even in full color
-          r = Math.min(255, Math.max(0, r + ditherVal * 20));
-          g = Math.min(255, Math.max(0, g + ditherVal * 20));
-          b = Math.min(255, Math.max(0, b + ditherVal * 20));
+    // Pass 2: Quantization & Palette mapping
+    if (state.flatten.enabled && insidePixels.length > 0) {
+      // Collect non-border sample points for median cut
+      const samplePts = [];
+      const step = Math.max(1, Math.floor(insidePixels.length / 3000));
+      for (let i = 0; i < insidePixels.length; i += step) {
+        if (!insidePixels[i].isBorder) {
+          samplePts.push([insidePixels[i].r, insidePixels[i].g, insidePixels[i].b]);
         }
+      }
+      if (samplePts.length === 0) {
+        for (let i = 0; i < insidePixels.length; i += step) {
+          samplePts.push([insidePixels[i].r, insidePixels[i].g, insidePixels[i].b]);
+        }
+      }
 
-        outPixels[outIdx] = Math.round(r);
-        outPixels[outIdx + 1] = Math.round(g);
-        outPixels[outIdx + 2] = Math.round(b);
-        outPixels[outIdx + 3] = a > 0 ? 255 : 0;
+      const adaptivePalette = extractAdaptivePalette(samplePts, state.flatten.count);
+      renderFlattenSwatches(adaptivePalette);
+
+      const adaptiveCache = new Map();
+      for (let i = 0; i < insidePixels.length; i++) {
+        const p = insidePixels[i];
+        if (p.isBorder) {
+          let [br, bg, bb] = findClosestColor(p.r, p.g, p.b, adaptivePalette, 0, adaptiveCache);
+          outPixels[p.outIdx] = br;
+          outPixels[p.outIdx + 1] = bg;
+          outPixels[p.outIdx + 2] = bb;
+          outPixels[p.outIdx + 3] = 255;
+        } else {
+          let ditherVal = 0;
+          if (ditherMode === 'bayer4') {
+            ditherVal = BAYER_4X4[p.py % 4][p.px % 4];
+          } else if (ditherMode === 'bayer2') {
+            ditherVal = BAYER_2X2[p.py % 2][p.px % 2];
+          }
+          const [qr, qg, qb] = findClosestColor(p.r, p.g, p.b, adaptivePalette, ditherVal, adaptiveCache);
+          outPixels[p.outIdx] = qr;
+          outPixels[p.outIdx + 1] = qg;
+          outPixels[p.outIdx + 2] = qb;
+          outPixels[p.outIdx + 3] = p.a > 0 ? 255 : 0;
+        }
+      }
+    } else {
+      // Clear swatches container when flatten is disabled
+      if (elements.flattenSwatches && elements.flattenSwatches.children.length > 0) {
+        elements.flattenSwatches.innerHTML = '';
+      }
+
+      for (let i = 0; i < insidePixels.length; i++) {
+        const p = insidePixels[i];
+        if (p.isBorder) {
+          let br = p.r;
+          let bg = p.g;
+          let bb = p.b;
+          if (paletteName !== 'original') {
+            [br, bg, bb] = findClosestPaletteColor(br, bg, bb, paletteName, 0, colorCache);
+          }
+          outPixels[p.outIdx] = br;
+          outPixels[p.outIdx + 1] = bg;
+          outPixels[p.outIdx + 2] = bb;
+          outPixels[p.outIdx + 3] = 255;
+        } else {
+          let ditherVal = 0;
+          if (ditherMode === 'bayer4') {
+            ditherVal = BAYER_4X4[p.py % 4][p.px % 4];
+          } else if (ditherMode === 'bayer2') {
+            ditherVal = BAYER_2X2[p.py % 2][p.px % 2];
+          }
+          let r = p.r;
+          let g = p.g;
+          let b = p.b;
+
+          if (paletteName !== 'original') {
+            [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, ditherVal, colorCache);
+          } else if (ditherMode !== 'none') {
+            // Subtle dithering even in full color
+            r = Math.min(255, Math.max(0, r + ditherVal * 20));
+            g = Math.min(255, Math.max(0, g + ditherVal * 20));
+            b = Math.min(255, Math.max(0, b + ditherVal * 20));
+          }
+
+          outPixels[p.outIdx] = Math.round(r);
+          outPixels[p.outIdx + 1] = Math.round(g);
+          outPixels[p.outIdx + 2] = Math.round(b);
+          outPixels[p.outIdx + 3] = p.a > 0 ? 255 : 0;
+        }
       }
     }
 
@@ -891,6 +1080,33 @@
       updatePlanetPreview();
     });
 
+    // Flatten Colors (Adaptive Palette)
+    elements.flattenToggle.addEventListener('change', (e) => {
+      state.flatten.enabled = e.target.checked;
+      elements.flattenControls.style.display = e.target.checked ? 'flex' : 'none';
+      updatePlanetPreview();
+    });
+
+    elements.flattenCountInput.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        setFlattenCount(val, false);
+      }
+    });
+
+    elements.flattenCountInput.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val) && val > 0) {
+        setFlattenCount(val, true);
+      } else {
+        setFlattenCount(state.flatten.count, true);
+      }
+    });
+
+    elements.flattenCountSlider.addEventListener('input', (e) => {
+      setFlattenCount(parseInt(e.target.value, 10), true);
+    });
+
     // Palette & Dither
     elements.paletteSelect.addEventListener('change', (e) => {
       state.palette = e.target.value;
@@ -962,6 +1178,11 @@
       elements.shadowSoftnessSlider.value = 30;
       state.lighting.softness = 0.30;
       elements.shadowSoftnessVal.textContent = '30%';
+
+      elements.flattenToggle.checked = false;
+      state.flatten.enabled = false;
+      elements.flattenControls.style.display = 'none';
+      setFlattenCount(8, true);
 
       elements.paletteSelect.value = 'original';
       state.palette = 'original';

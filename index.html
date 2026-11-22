@@ -269,6 +269,31 @@
                 </div>
               </div>
 
+              <!-- Flatten Colors (Adaptive Image Palette) -->
+              <div class="accordion-item">
+                <div class="accordion-header">
+                  <div class="accordion-title-with-toggle">
+                    <input type="checkbox" id="flattenToggle">
+                    <label for="flattenToggle" class="accordion-title">Flatten Colors</label>
+                  </div>
+                  <span class="badge-mini">Adaptive</span>
+                </div>
+                <div class="accordion-body" id="flattenControls" style="display: none;">
+                  <div class="control-header">
+                    <label for="flattenCountInput" class="control-label">Color Count</label>
+                    <div class="control-value-group">
+                      <input type="number" id="flattenCountInput" class="number-input" value="8" step="1">
+                      <span class="unit">colors</span>
+                    </div>
+                  </div>
+                  <input type="range" id="flattenCountSlider" class="range-slider" min="2" max="64" value="8" step="1">
+                  <div class="palette-swatches-container" id="flattenSwatches"></div>
+                  <div class="control-description">
+                    Flattens the image down to a specific number of colors derived directly from the image itself rather than a preset palette.
+                  </div>
+                </div>
+              </div>
+
               <!-- Pixel Palette & Dithering -->
               <div class="accordion-item">
                 <div class="accordion-header">
