@@ -186,6 +186,7 @@
     selectionCenterInfo: document.getElementById('selectionCenterInfo'),
     zoomLevelInfo: document.getElementById('zoomLevelInfo'),
     previewBadge: document.getElementById('previewBadge'),
+    controlsScrollable: document.querySelector('.controls-scrollable'),
 
     // Transformation controls
     sphereWarpToggle: document.getElementById('sphereWarpToggle'),
@@ -973,13 +974,14 @@
       state.isDraggingSelection = false;
     });
 
-    // Mouse wheel zoom
-    viewport.addEventListener('wheel', (e) => {
-      if (!state.sourceImage) return;
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoom(state.zoom + delta);
-    }, { passive: false });
+    // Scrolling anywhere on the page scrolls the transformations menu
+    window.addEventListener('wheel', (e) => {
+      const scrollable = elements.controlsScrollable || document.querySelector('.controls-scrollable');
+      if (!scrollable) return;
+      if (!scrollable.contains(e.target)) {
+        scrollable.scrollTop += e.deltaY;
+      }
+    }, { passive: true });
   }
 
   // Core Controls Listeners

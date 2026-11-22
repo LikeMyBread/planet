@@ -9,7 +9,7 @@ A web application that turns uploaded images into retro pixel art planets.
   - Includes 5 procedural sample textures (Gas Giant, Terran, Volcanic, Glacial, Alien Nebula) ready to use immediately.
   - Interactive circular selector overlay with diameter badge and center crosshairs.
   - Click or drag anywhere on the source image to place and move the selection circle.
-  - Viewport zoom controls (Zoom In, Zoom Out, Fit to Screen, Mouse Wheel zoom).
+  - Viewport zoom controls (Zoom In, Zoom Out, Fit to Screen). Scrolling anywhere on the page scrolls the transformations menu.
 
 - **Upper-Right Preview Box**:
   - Real-time rendering of the generated pixel art planet.
