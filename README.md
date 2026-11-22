@@ -23,10 +23,9 @@ A web application that turns uploaded images into retro pixel art planets.
   3. **Scaling Algorithm**: Nearest Neighbor (crisp retro pixel art) or Bilinear (smooth downsampling).
   4. **3D Spherical Warp**: Maps flat textures onto a 3D unit sphere with adjustable curvature bulge.
   5. **Sunlight & Planetary Shadow**: Configurable light angle (0°–360°), shadow darkness, and terminator softness.
-  6. **Flatten Colors (Adaptive Image Quantization)**: Flattens the image colors down to a custom number of colors (selected via slider or numeric input) derived directly from the image's own colors using Median Cut clustering. Includes live color swatches.
-  7. **Retro Color Palettes**: Full Color, Generic (32, 64, 128 colors), PICO-8 (16 colors), Game Boy (4 greens), Cyberpunk Neon, Solar Flare, Deep Space, and 16-shade Monochrome.
-  8. **Pixel Dithering**: Bayer 2×2 and Bayer 4×4 ordered dithering.
-  9. **Pixel Outline**: Crisp contour border around the planet.
+  6. **Retro Color Palettes & Dithering**: Full Color, Generic (32, 64, 128 colors), PICO-8 (16 colors), Game Boy (4 greens), Cyberpunk Neon, Solar Flare, Deep Space, and 16-shade Monochrome, with Bayer 2×2 and 4×4 ordered dithering.
+  7. **Flatten Colors (Adaptive Image Quantization)**: Applied after the color palette filter, flattens image colors down to a custom number of colors (selected via slider or unbounded numeric input) derived adaptively using Median Cut clustering. Includes live palette swatches.
+  8. **Pixel Outline**: Crisp contour border around the planet.
 
 ## How to Run
 

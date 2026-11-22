@@ -795,9 +795,48 @@
       }
     }
 
-    // Pass 2: Quantization & Palette mapping
+    // Pass 2: Filter application in order:
+    // Filter 1: Color Palette Selection Tool (Preset Palette & Dithering)
+    for (let i = 0; i < insidePixels.length; i++) {
+      const p = insidePixels[i];
+      if (p.isBorder) {
+        let br = p.r;
+        let bg = p.g;
+        let bb = p.b;
+        if (paletteName !== 'original') {
+          [br, bg, bb] = findClosestPaletteColor(br, bg, bb, paletteName, 0, colorCache);
+        }
+        p.r = br;
+        p.g = bg;
+        p.b = bb;
+      } else {
+        let ditherVal = 0;
+        if (ditherMode === 'bayer4') {
+          ditherVal = BAYER_4X4[p.py % 4][p.px % 4];
+        } else if (ditherMode === 'bayer2') {
+          ditherVal = BAYER_2X2[p.py % 2][p.px % 2];
+        }
+        let r = p.r;
+        let g = p.g;
+        let b = p.b;
+
+        if (paletteName !== 'original') {
+          [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, ditherVal, colorCache);
+        } else if (ditherMode !== 'none') {
+          r = Math.min(255, Math.max(0, r + ditherVal * 20));
+          g = Math.min(255, Math.max(0, g + ditherVal * 20));
+          b = Math.min(255, Math.max(0, b + ditherVal * 20));
+        }
+
+        p.r = Math.round(r);
+        p.g = Math.round(g);
+        p.b = Math.round(b);
+      }
+    }
+
+    // Filter 2: Flatten Colors Tool (Applied AFTER Color Palette Selection)
     if (state.flatten.enabled && insidePixels.length > 0) {
-      // Collect non-border sample points for median cut
+      // Collect sample points from the palette-filtered pixels
       const samplePts = [];
       const step = Math.max(1, Math.floor(insidePixels.length / 3000));
       for (let i = 0; i < insidePixels.length; i += step) {
@@ -811,6 +850,7 @@
         }
       }
 
+      // Extract K adaptive colors from the palette-processed image
       const adaptivePalette = extractAdaptivePalette(samplePts, state.flatten.count);
       renderFlattenSwatches(adaptivePalette);
 
@@ -819,10 +859,9 @@
         const p = insidePixels[i];
         if (p.isBorder) {
           let [br, bg, bb] = findClosestColor(p.r, p.g, p.b, adaptivePalette, 0, adaptiveCache);
-          outPixels[p.outIdx] = br;
-          outPixels[p.outIdx + 1] = bg;
-          outPixels[p.outIdx + 2] = bb;
-          outPixels[p.outIdx + 3] = 255;
+          p.r = br;
+          p.g = bg;
+          p.b = bb;
         } else {
           let ditherVal = 0;
           if (ditherMode === 'bayer4') {
@@ -831,10 +870,9 @@
             ditherVal = BAYER_2X2[p.py % 2][p.px % 2];
           }
           const [qr, qg, qb] = findClosestColor(p.r, p.g, p.b, adaptivePalette, ditherVal, adaptiveCache);
-          outPixels[p.outIdx] = qr;
-          outPixels[p.outIdx + 1] = qg;
-          outPixels[p.outIdx + 2] = qb;
-          outPixels[p.outIdx + 3] = p.a > 0 ? 255 : 0;
+          p.r = qr;
+          p.g = qg;
+          p.b = qb;
         }
       }
     } else {
@@ -842,46 +880,15 @@
       if (elements.flattenSwatches && elements.flattenSwatches.children.length > 0) {
         elements.flattenSwatches.innerHTML = '';
       }
+    }
 
-      for (let i = 0; i < insidePixels.length; i++) {
-        const p = insidePixels[i];
-        if (p.isBorder) {
-          let br = p.r;
-          let bg = p.g;
-          let bb = p.b;
-          if (paletteName !== 'original') {
-            [br, bg, bb] = findClosestPaletteColor(br, bg, bb, paletteName, 0, colorCache);
-          }
-          outPixels[p.outIdx] = br;
-          outPixels[p.outIdx + 1] = bg;
-          outPixels[p.outIdx + 2] = bb;
-          outPixels[p.outIdx + 3] = 255;
-        } else {
-          let ditherVal = 0;
-          if (ditherMode === 'bayer4') {
-            ditherVal = BAYER_4X4[p.py % 4][p.px % 4];
-          } else if (ditherMode === 'bayer2') {
-            ditherVal = BAYER_2X2[p.py % 2][p.px % 2];
-          }
-          let r = p.r;
-          let g = p.g;
-          let b = p.b;
-
-          if (paletteName !== 'original') {
-            [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, ditherVal, colorCache);
-          } else if (ditherMode !== 'none') {
-            // Subtle dithering even in full color
-            r = Math.min(255, Math.max(0, r + ditherVal * 20));
-            g = Math.min(255, Math.max(0, g + ditherVal * 20));
-            b = Math.min(255, Math.max(0, b + ditherVal * 20));
-          }
-
-          outPixels[p.outIdx] = Math.round(r);
-          outPixels[p.outIdx + 1] = Math.round(g);
-          outPixels[p.outIdx + 2] = Math.round(b);
-          outPixels[p.outIdx + 3] = p.a > 0 ? 255 : 0;
-        }
-      }
+    // Write final pixels to canvas output buffer
+    for (let i = 0; i < insidePixels.length; i++) {
+      const p = insidePixels[i];
+      outPixels[p.outIdx] = Math.round(p.r);
+      outPixels[p.outIdx + 1] = Math.round(p.g);
+      outPixels[p.outIdx + 2] = Math.round(p.b);
+      outPixels[p.outIdx + 3] = p.a > 0 ? 255 : 0;
     }
 
     ctx.putImageData(outputImgData, 0, 0);
