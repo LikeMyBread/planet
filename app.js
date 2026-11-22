@@ -8,7 +8,61 @@
   // ==========================================================================
   // Color Palettes for Pixel Art Quantization
   // ==========================================================================
+
+  // Generate Generic 32 (8 grays + 8 hues x 3 tones = 32 colors)
+  function createGeneric32() {
+    const grays = [
+      [0, 0, 0], [36, 36, 36], [73, 73, 73], [109, 109, 109],
+      [146, 146, 146], [182, 182, 182], [219, 219, 219], [255, 255, 255]
+    ];
+    const chromatic = [
+      [90, 20, 20], [215, 45, 45], [255, 130, 130],     // Red
+      [115, 55, 15], [235, 120, 30], [255, 185, 95],    // Orange
+      [115, 100, 15], [240, 210, 30], [255, 245, 125],  // Yellow
+      [20, 85, 30], [45, 180, 65], [125, 240, 145],     // Green
+      [15, 85, 100], [30, 180, 210], [125, 240, 255],   // Cyan
+      [20, 40, 110], [45, 90, 230], [130, 165, 255],    // Blue
+      [65, 20, 100], [140, 50, 215], [200, 135, 255],   // Purple
+      [100, 20, 75], [215, 45, 160], [255, 140, 215]    // Magenta
+    ];
+    return [...grays, ...chromatic];
+  }
+
+  // Generate Generic 64 (4x4x4 RGB color cube)
+  function createGeneric64() {
+    const levels = [0, 85, 170, 255];
+    const colors = [];
+    for (let r of levels) {
+      for (let g of levels) {
+        for (let b of levels) {
+          colors.push([r, g, b]);
+        }
+      }
+    }
+    return colors;
+  }
+
+  // Generate Generic 128 (5x5x5 RGB color cube = 125 + 3 intermediate grays = 128 colors)
+  function createGeneric128() {
+    const levels = [0, 64, 128, 192, 255];
+    const colors = [];
+    for (let r of levels) {
+      for (let g of levels) {
+        for (let b of levels) {
+          colors.push([r, g, b]);
+        }
+      }
+    }
+    colors.push([32, 32, 32]);
+    colors.push([96, 96, 96]);
+    colors.push([160, 160, 160]);
+    return colors;
+  }
+
   const PALETTES = {
+    generic32: createGeneric32(),
+    generic64: createGeneric64(),
+    generic128: createGeneric128(),
     pico8: [
       [0, 0, 0], [29, 43, 83], [126, 37, 83], [0, 135, 81],
       [171, 82, 54], [95, 87, 79], [194, 195, 199], [255, 241, 232],
@@ -404,14 +458,19 @@
     ];
   }
 
-  function findClosestPaletteColor(r, g, b, paletteName, ditherOffset = 0) {
+  function findClosestPaletteColor(r, g, b, paletteName, ditherOffset = 0, colorCache = null) {
     const palette = PALETTES[paletteName];
     if (!palette) return [r, g, b];
 
     // Apply dither offset
-    const dr = Math.min(255, Math.max(0, r + ditherOffset * 48));
-    const dg = Math.min(255, Math.max(0, g + ditherOffset * 48));
-    const db = Math.min(255, Math.max(0, b + ditherOffset * 48));
+    const dr = Math.min(255, Math.max(0, Math.round(r + ditherOffset * 48)));
+    const dg = Math.min(255, Math.max(0, Math.round(g + ditherOffset * 48)));
+    const db = Math.min(255, Math.max(0, Math.round(b + ditherOffset * 48)));
+
+    const cacheKey = (dr << 16) | (dg << 8) | db;
+    if (colorCache && colorCache.has(cacheKey)) {
+      return colorCache.get(cacheKey);
+    }
 
     let bestDist = Infinity;
     let bestColor = palette[0];
@@ -426,6 +485,9 @@
         bestDist = d;
         bestColor = c;
       }
+    }
+    if (colorCache) {
+      colorCache.set(cacheKey, bestColor);
     }
     return bestColor;
   }
@@ -444,6 +506,9 @@
     // Target image data
     const outputImgData = ctx.createImageData(outW, outH);
     const outPixels = outputImgData.data;
+
+    // Color quantization cache for performance
+    const colorCache = new Map();
 
     // Source context pixel data for sampling
     const srcW = state.sourceCanvas.width;
@@ -546,7 +611,7 @@
           let g = outlineColor[1];
           let b = outlineColor[2];
           if (paletteName !== 'original') {
-            [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, 0);
+            [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, 0, colorCache);
           }
           outPixels[outIdx] = r;
           outPixels[outIdx + 1] = g;
@@ -614,7 +679,7 @@
 
         // 7. Color Palette Quantization
         if (paletteName !== 'original') {
-          [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, ditherVal);
+          [r, g, b] = findClosestPaletteColor(r, g, b, paletteName, ditherVal, colorCache);
         } else if (ditherMode !== 'none') {
           // Subtle dithering even in full color
           r = Math.min(255, Math.max(0, r + ditherVal * 20));
