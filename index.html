@@ -11,42 +11,6 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Top Bar -->
-    <header class="app-header">
-      <div class="header-brand">
-        <span class="brand-icon">🪐</span>
-        <div class="brand-titles">
-          <h1 class="brand-title">PIXEL PLANET</h1>
-          <p class="brand-tagline">Transform any image into a retro pixel-art planet</p>
-        </div>
-      </div>
-
-      <div class="header-actions">
-        <!-- Preset Demo Textures -->
-        <div class="presets-group">
-          <span class="action-label">Sample Textures:</span>
-          <div class="preset-buttons">
-            <button class="btn btn-preset active" data-preset="jupiter" title="Jupiter-like Gas Giant">Gas Giant</button>
-            <button class="btn btn-preset" data-preset="earth" title="Earth-like Continents & Oceans">Terran</button>
-            <button class="btn btn-preset" data-preset="magma" title="Molten Lava & Basalt">Volcanic</button>
-            <button class="btn btn-preset" data-preset="ice" title="Frozen Ice & Glaciers">Glacial</button>
-            <button class="btn btn-preset" data-preset="nebula" title="Cosmic Purple Nebula">Alien</button>
-          </div>
-        </div>
-
-        <!-- Upload Button -->
-        <label class="btn btn-primary upload-btn" for="imageFileInput">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          Upload Image
-          <input type="file" id="imageFileInput" accept="image/*" hidden>
-        </label>
-      </div>
-    </header>
-
     <!-- Main Workspace -->
     <div class="main-workspace">
       <!-- Main Area: Occupied by the uploaded image -->
@@ -62,7 +26,7 @@
             <div class="empty-state-content">
               <div class="empty-icon">🌠</div>
               <h2>Drop an image here</h2>
-              <p>Supports PNG, JPG, WEBP, or SVG &bull; Or click Upload above</p>
+              <p>Supports PNG, JPG, WEBP, or SVG &bull; Or use the sidebar</p>
               <label class="btn btn-secondary" for="imageFileInput">Browse Files</label>
             </div>
           </div>
@@ -95,13 +59,6 @@
       <aside class="sidebar-panel">
         <!-- Preview Box (Upper Right) -->
         <section class="preview-box-container">
-          <div class="section-header">
-            <h2 class="section-title">
-              <span class="dot-indicator"></span> Planet Preview
-            </h2>
-            <div class="preview-resolution-badge" id="previewBadge">64 × 64 px</div>
-          </div>
-
           <div class="preview-display-wrapper">
             <div class="preview-canvas-backdrop bg-space" id="previewBackdrop">
               <canvas id="previewCanvas" width="64" height="64"></canvas>
@@ -115,6 +72,8 @@
                 <button class="btn btn-chip active" data-preview-zoom="4">4×</button>
                 <button class="btn btn-chip" data-preview-zoom="6">6×</button>
               </div>
+
+              <div class="preview-resolution-badge" id="previewBadge">64 × 64 px</div>
 
               <div class="bg-selectors">
                 <button class="btn btn-icon-chip active" data-bg="space" title="Space Background">🌌</button>
@@ -152,6 +111,39 @@
           </div>
 
           <div class="controls-scrollable">
+            <!-- Source Image: Samples & Upload -->
+            <div class="control-card source-card">
+              <div class="control-header">
+                <span class="control-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  Source Image
+                </span>
+                <label class="btn btn-primary upload-btn btn-sm" for="imageFileInput">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                  Upload
+                  <input type="file" id="imageFileInput" accept="image/*" hidden>
+                </label>
+              </div>
+              <div class="presets-row">
+                <span class="preset-label">Samples:</span>
+                <div class="preset-buttons">
+                  <button class="btn btn-preset active" data-preset="jupiter" title="Jupiter-like Gas Giant">Gas Giant</button>
+                  <button class="btn btn-preset" data-preset="earth" title="Earth-like Continents & Oceans">Terran</button>
+                  <button class="btn btn-preset" data-preset="magma" title="Molten Lava & Basalt">Volcanic</button>
+                  <button class="btn btn-preset" data-preset="ice" title="Frozen Ice & Glaciers">Glacial</button>
+                  <button class="btn btn-preset" data-preset="nebula" title="Cosmic Purple Nebula">Alien</button>
+                </div>
+              </div>
+            </div>
+
             <!-- First Core Control: Selection Width -->
             <div class="control-card primary-card">
               <div class="control-header">

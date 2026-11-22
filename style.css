@@ -27,7 +27,6 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   --sidebar-width: 380px;
-  --header-height: 64px;
   --status-bar-height: 38px;
 }
 
@@ -55,85 +54,11 @@ body {
   overflow: hidden;
 }
 
-/* Header */
-.app-header {
-  height: var(--header-height);
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand-icon {
-  font-size: 26px;
-  filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.4));
-  animation: float 4s ease-in-out infinite alternate;
-}
-
-@keyframes float {
-  0% { transform: translateY(0px) rotate(0deg); }
-  100% { transform: translateY(-3px) rotate(6deg); }
-}
-
-.brand-title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  letter-spacing: 1px;
-  background: linear-gradient(135deg, #38bdf8 0%, #a855f7 60%, #ec4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.brand-tagline {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 3px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.presets-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(13, 15, 27, 0.6);
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-subtle);
-}
-
-.action-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.preset-buttons {
-  display: flex;
-  gap: 6px;
-}
-
 /* Main Workspace */
 .main-workspace {
   display: flex;
   flex: 1;
-  height: calc(100vh - var(--header-height));
+  height: 100vh;
   overflow: hidden;
   position: relative;
 }
@@ -298,7 +223,7 @@ body {
 
 /* Preview Box (Upper Right) */
 .preview-box-container {
-  padding: 16px;
+  padding: 12px;
   border-bottom: 1px solid var(--border-subtle);
   background: linear-gradient(180deg, rgba(24, 29, 48, 0.6) 0%, rgba(17, 20, 34, 0.9) 100%);
   flex-shrink: 0;
@@ -405,10 +330,22 @@ body {
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--border-subtle);
   align-items: center;
+  gap: 6px;
+}
+
+.preview-toolbar .preview-resolution-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--accent-cyan);
+  white-space: nowrap;
 }
 
 .scale-selectors, .bg-selectors {
@@ -480,6 +417,57 @@ body {
   border-radius: 10px;
   padding: 12px;
   transition: border-color 0.15s ease;
+}
+
+.control-card.source-card {
+  background: linear-gradient(180deg, rgba(28, 33, 54, 0.7) 0%, rgba(20, 24, 40, 0.9) 100%);
+  border-color: rgba(56, 189, 248, 0.25);
+  padding: 10px 12px;
+}
+
+.presets-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.preset-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.presets-row .preset-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.presets-row .btn-preset {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
+.presets-row .btn-preset:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-glow);
+}
+
+.presets-row .btn-preset.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.5);
+  color: var(--accent-cyan);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 11px;
 }
 
 .control-card:hover {
@@ -970,12 +958,9 @@ body {
 /* Responsive adjustments */
 @media (max-width: 900px) {
   :root {
-    --sidebar-width: 320px;
+    --sidebar-width: 340px;
   }
   .status-hint {
-    display: none;
-  }
-  .presets-group .action-label {
     display: none;
   }
 }
