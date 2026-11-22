@@ -125,7 +125,8 @@
     selection: {
       x: 0,
       y: 0,
-      width: 256 // Selection Width (diameter in source pixels)
+      width: 256, // Selection Width (diameter in source pixels)
+      rotation: 0 // Selection Rotation (degrees)
     },
 
     // Output properties
@@ -178,6 +179,8 @@
     // Core Controls
     selectionWidthInput: document.getElementById('selectionWidthInput'),
     selectionWidthSlider: document.getElementById('selectionWidthSlider'),
+    selectionRotationInput: document.getElementById('selectionRotationInput'),
+    selectionRotationSlider: document.getElementById('selectionRotationSlider'),
     outputWidthInput: document.getElementById('outputWidthInput'),
     outputWidthSlider: document.getElementById('outputWidthSlider'),
 
@@ -284,7 +287,7 @@
   }
 
   // ==========================================================================
-  // Selection Control (Core Control #1: Selection Width)
+  // Selection Control (Core Control #1: Selection Width & Rotation)
   // ==========================================================================
 
   function setSelectionWidth(newWidth, updateInput = true) {
@@ -298,6 +301,28 @@
     const sliderMin = parseInt(elements.selectionWidthSlider.min, 10) || 16;
     const sliderMax = parseInt(elements.selectionWidthSlider.max, 10) || 1024;
     elements.selectionWidthSlider.value = Math.max(sliderMin, Math.min(width, sliderMax));
+
+    drawOverlay();
+    updatePlanetPreview();
+  }
+
+  function setSelectionRotation(newRotation, updateInput = true) {
+    const rot = Math.round(Number(newRotation) || 0);
+    state.selection.rotation = rot;
+    if (updateInput && elements.selectionRotationInput) {
+      elements.selectionRotationInput.value = rot;
+    }
+
+    if (elements.selectionRotationSlider) {
+      const sliderMin = parseInt(elements.selectionRotationSlider.min, 10) || 0;
+      const sliderMax = parseInt(elements.selectionRotationSlider.max, 10) || 360;
+      elements.selectionRotationSlider.value = Math.max(sliderMin, Math.min(rot, sliderMax));
+    }
+
+    const normRot = ((rot % 360) + 360) % 360;
+    document.querySelectorAll('[data-rotation]').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.rotation, 10) === normRot);
+    });
 
     drawOverlay();
     updatePlanetPreview();
@@ -324,6 +349,8 @@
 
     const { x, y, width } = state.selection;
     const radius = width / 2;
+    const rot = state.selection.rotation || 0;
+    const rotRad = (rot * Math.PI) / 180;
 
     // 1. Darken outer region slightly so the circular selection stands out
     ctx.save();
@@ -354,25 +381,77 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 3. Center crosshair
-    const chSize = 10;
+    // 3. Selection orientation and center crosshairs
+    ctx.save();
+    ctx.translate(x, y);
+
+    const normRot = ((rot % 360) + 360) % 360;
+    if (normRot !== 0) {
+      // Unrotated reference crosshairs (subtle dashed)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(16, 0);
+      ctx.moveTo(0, -16);
+      ctx.lineTo(0, 16);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Small angle arc showing rotation from top (12 o'clock = -PI/2)
+      const arcRadius = Math.min(24, Math.max(12, radius * 0.3));
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, arcRadius, -Math.PI / 2, -Math.PI / 2 + rotRad, rotRad < 0);
+      ctx.stroke();
+    }
+
+    // Rotated axes and crosshair
+    ctx.rotate(rotRad);
+
+    const chSize = 12;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(x - chSize, y);
-    ctx.lineTo(x + chSize, y);
-    ctx.moveTo(x, y - chSize);
-    ctx.lineTo(x, y + chSize);
+    ctx.moveTo(-chSize, 0);
+    ctx.lineTo(chSize, 0);
+    ctx.moveTo(0, -chSize);
+    ctx.lineTo(0, chSize);
     ctx.stroke();
 
-    // 4. Center small dot
+    // Orientation indicator pointing to top / "up" of the rotated selection
+    if (radius > 24) {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.fillStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(0, -chSize);
+      ctx.lineTo(0, -radius + 14);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Arrow head at perimeter indicating the top/North orientation
+      ctx.beginPath();
+      ctx.moveTo(0, -radius + 4);
+      ctx.lineTo(-5, -radius + 14);
+      ctx.lineTo(5, -radius + 14);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Center small cyan dot
     ctx.fillStyle = '#38bdf8';
     ctx.beginPath();
-    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // 5. Dimension tag above circle
-    const label = `Ø ${Math.round(width)} px`;
+    ctx.restore();
+
+    // 5. Dimension & rotation tag above circle
+    const label = normRot !== 0 ? `Ø ${Math.round(width)} px • ${Math.round(rot)}°` : `Ø ${Math.round(width)} px`;
     ctx.font = '11px "JetBrains Mono", monospace';
     const textWidth = ctx.measureText(label).width;
     const tagX = x - textWidth / 2 - 8;
@@ -657,6 +736,12 @@
     const paletteName = state.palette;
     const ditherMode = state.dither;
 
+    // Selection rotation transformation (applied first to the selected area)
+    const rotDeg = state.selection.rotation || 0;
+    const rotRad = (rotDeg * Math.PI) / 180;
+    const cosRot = Math.cos(rotRad);
+    const sinRot = Math.sin(rotRad);
+
     // Sample function: nearest or bilinear from source
     function sampleSource(px, py) {
       if (useNearest) {
@@ -733,7 +818,11 @@
           continue;
         }
 
-        // 2. Map coordinates: flat vs 3D spherical warp
+        // 2. Map coordinates: Selection rotation -> 3D spherical warp vs flat crop
+        // Apply rotation to the selected area first before any other transformations
+        const uRot = u * cosRot + v * sinRot;
+        const vRot = -u * sinRot + v * cosRot;
+
         let sampleOffsetX, sampleOffsetY;
         let nz = 1.0;
 
@@ -746,12 +835,12 @@
           const warpFactor = curvature * sphereDist + (1.0 - curvature) * dist;
           const scale = dist > 0.0001 ? warpFactor / dist : 1.0;
 
-          sampleOffsetX = u * scale * selRadius;
-          sampleOffsetY = v * scale * selRadius;
+          sampleOffsetX = uRot * scale * selRadius;
+          sampleOffsetY = vRot * scale * selRadius;
         } else {
-          // Flat direct crop
-          sampleOffsetX = u * selRadius;
-          sampleOffsetY = v * selRadius;
+          // Flat direct crop with selection rotation
+          sampleOffsetX = uRot * selRadius;
+          sampleOffsetY = vRot * selRadius;
         }
 
         // Source pixel coordinates
@@ -1014,6 +1103,33 @@
       setSelectionWidth(parseInt(e.target.value, 10), true);
     });
 
+    // Selection Rotation (Input & Slider & Presets)
+    elements.selectionRotationInput.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) {
+        setSelectionRotation(val, false);
+      }
+    });
+
+    elements.selectionRotationInput.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) {
+        setSelectionRotation(val, true);
+      } else {
+        setSelectionRotation(state.selection.rotation, true);
+      }
+    });
+
+    elements.selectionRotationSlider.addEventListener('input', (e) => {
+      setSelectionRotation(parseInt(e.target.value, 10), true);
+    });
+
+    document.querySelectorAll('[data-rotation]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setSelectionRotation(parseInt(btn.dataset.rotation, 10), true);
+      });
+    });
+
     // Output Width (Input & Slider & Presets)
     elements.outputWidthInput.addEventListener('input', (e) => {
       const val = parseFloat(e.target.value);
@@ -1166,6 +1282,7 @@
     // Reset controls button
     elements.resetControlsBtn.addEventListener('click', () => {
       setSelectionWidth(256);
+      setSelectionRotation(0);
       setOutputWidth(64);
       document.querySelector('input[name="scalingAlgo"][value="nearest"]').checked = true;
       state.scalingAlgo = 'nearest';

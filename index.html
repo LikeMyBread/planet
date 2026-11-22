@@ -144,7 +144,7 @@
               </div>
             </div>
 
-            <!-- First Core Control: Selection Width -->
+            <!-- First Core Control: Selection Area -->
             <div class="control-card primary-card">
               <div class="control-header">
                 <label for="selectionWidthInput" class="control-label">
@@ -156,8 +156,28 @@
                 </div>
               </div>
               <input type="range" id="selectionWidthSlider" class="range-slider" min="16" max="1024" value="256" step="1">
-              <div class="control-description">
-                Diameter of circular selector on the uploaded image. Click anywhere on the image to position.
+
+              <!-- Selection Rotation Slider -->
+              <div class="control-header" style="margin-top: 10px;">
+                <label for="selectionRotationInput" class="control-label">
+                  Selection Rotation
+                </label>
+                <div class="control-value-group">
+                  <input type="number" id="selectionRotationInput" class="number-input" value="0" step="1">
+                  <span class="unit">°</span>
+                </div>
+              </div>
+              <input type="range" id="selectionRotationSlider" class="range-slider" min="0" max="360" value="0" step="1">
+              <div class="quick-presets" style="margin-top: 4px;">
+                <span class="quick-presets-label">Presets:</span>
+                <button type="button" class="btn btn-pill active" data-rotation="0">0°</button>
+                <button type="button" class="btn btn-pill" data-rotation="90">90°</button>
+                <button type="button" class="btn btn-pill" data-rotation="180">180°</button>
+                <button type="button" class="btn btn-pill" data-rotation="270">270°</button>
+              </div>
+
+              <div class="control-description" style="margin-top: 6px;">
+                Diameter and rotation angle of circular selector on the uploaded image. Click anywhere on the image to position.
               </div>
             </div>
 

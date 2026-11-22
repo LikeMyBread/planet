@@ -18,7 +18,7 @@ A web application that turns uploaded images into retro pixel art planets.
   - One-click **Export PNG** and **Copy to Clipboard**.
 
 - **Transformation Controls (Below Preview Box)**:
-  1. **Selection Width**: Defines the circular selector diameter in source image pixels.
+  1. **Selection Width & Rotation**: Defines the circular selector diameter (in source image pixels) and rotation angle (0°–360° with quick presets for 0°, 90°, 180°, 270°). Rotation is applied directly to the selection before any other transformations.
   2. **Output Width**: Defines the target pixel art width/height (with quick presets for 24, 32, 64, 96, 128 px).
   3. **Scaling Algorithm**: Nearest Neighbor (crisp retro pixel art) or Bilinear (smooth downsampling).
   4. **3D Spherical Warp**: Maps flat textures onto a 3D unit sphere with adjustable curvature bulge.
